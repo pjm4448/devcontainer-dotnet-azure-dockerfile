@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile",
     "context": ".",
     "args": {
-      "IMAGE_GREETING": "Hello from a Dockerfile-built dev container!"
+      "IMAGE_GREETING": "Hello from my own image build!"
     }
   },
   "features": {
