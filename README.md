@@ -88,11 +88,12 @@ You do **not** need .NET, Azure CLI, or Bicep on the host. C# Dev Kit has its ow
    bicep --version
    sqlite3 --version
    dos2unix --version
+   shellcheck --version
    echo "$HELLO_GREETING"
    ```
 
-   Expect a `10.0.x` SDK, Azure CLI and Bicep version details, the versions of two
-   packages installed by the Dockerfile, and
+   Expect a `10.0.x` SDK, Azure CLI and Bicep version details, the versions of
+   three packages installed by the Dockerfile, and
    `Hello from a Dockerfile-built dev container!`.
 6. Build and run:
 
@@ -179,7 +180,7 @@ Open [`.devcontainer/Dockerfile`](.devcontainer/Dockerfile).
 | Section | What it shows |
 | --- | --- |
 | `FROM mcr.microsoft.com/devcontainers/base:ubuntu24.04` | Start from a Dev Containers base image: Ubuntu, Git, common tools, and a `vscode` user with `sudo`. Starting from `ubuntu:24.04` would lose those conveniences. |
-| `RUN apt-get update && ... apt-get install ...` | Installs `sqlite3` and `dos2unix`, which have no Feature. `update` and `install` share one `RUN` so a cached package index is never reused with a new package list. `--no-install-recommends` keeps the layer small; `DEBIAN_FRONTEND=noninteractive` prevents prompts; deleting `/var/lib/apt/lists` keeps the index out of the image. |
+| `RUN apt-get update && ... apt-get install ...` | Installs `sqlite3`, `dos2unix`, and `shellcheck`, which have no Feature. `update` and `install` share one `RUN` so a cached package index is never reused with a new package list. `--no-install-recommends` keeps the layer small; `DEBIAN_FRONTEND=noninteractive` prevents prompts; deleting `/var/lib/apt/lists` keeps the index out of the image. |
 | `COPY certs/ ...` + `update-ca-certificates` | Adds every `*.crt` in `.devcontainer/certs/` to the OS trust store. It works when the folder holds no certificates. |
 | `ENV REQUESTS_CA_BUNDLE` / `NODE_EXTRA_CA_CERTS` | Azure CLI (Python) and VS Code extensions (Node.js) bundle their own CA lists. These variables point them at the OS bundle, including your extra certificates. |
 | `ARG IMAGE_GREETING` + `ENV HELLO_GREETING` | An `ARG` exists only while building. Copying it to an `ENV` bakes it into the image, so every process in the container can read it. |
@@ -271,7 +272,7 @@ take a few minutes.
    ```bash
    whoami
    grep PRETTY_NAME /etc/os-release
-   command -v git jq sqlite3 dos2unix dotnet az bicep
+   command -v git jq sqlite3 dos2unix shellcheck dotnet az bicep
    echo "$HELLO_GREETING"
    cat /etc/devcontainer-learning/learning.conf
    ls /usr/local/share/ca-certificates/
@@ -282,7 +283,7 @@ take a few minutes.
    | Result | Source |
    | --- | --- |
    | `vscode`, Ubuntu 24.04, `git`, `jq` | Base image (`FROM` line) |
-   | `sqlite3`, `dos2unix` | Dockerfile `RUN apt-get install` |
+   | `sqlite3`, `dos2unix`, `shellcheck` | Dockerfile `RUN apt-get install` |
    | `HELLO_GREETING` | Dockerfile `ARG` + `ENV` |
    | `/etc/devcontainer-learning/learning.conf` | Dockerfile `COPY` |
    | `dotnet`, `az`, `bicep` | Features, installed after the Dockerfile |
@@ -313,15 +314,20 @@ Dockerfile instructions, then the base image.
    ```
 
    It works, but only in this container.
-2. Open [`.devcontainer/Dockerfile`](.devcontainer/Dockerfile) and add
-   `shellcheck` to the package list, keeping the backslashes and alphabetical
-   order:
+2. Open [`.devcontainer/Dockerfile`](.devcontainer/Dockerfile). If `shellcheck`
+   is already listed, remove that line and rebuild first. Then add
+   `shellcheck` to the existing package list, keeping the backslashes and
+   alphabetical order. The complete package installation should look like:
 
    ```dockerfile
+   RUN apt-get update \
+       && export DEBIAN_FRONTEND=noninteractive \
        && apt-get install -y --no-install-recommends \
            dos2unix \
            shellcheck \
            sqlite3 \
+       && apt-get clean \
+       && rm -rf /var/lib/apt/lists/*
    ```
 
 3. Save, then run **Dev Containers: Rebuild Container**. Watch the log: the
@@ -337,8 +343,7 @@ Dockerfile instructions, then the base image.
 definition. `rg` is gone because it lived only in the replaced container. Every
 teammate who rebuilds gets `shellcheck` too.
 
-**Cleanup:** Optional: remove the `shellcheck` line and save. The next
-exercise's rebuild applies the change.
+**Cleanup:** Leave `shellcheck` in the list to restore the default configuration.
 
 ### Exercise 3: Bake in a build argument and environment variable
 
